@@ -10,7 +10,7 @@ They are defined in the LinkedIn Ads Block Config project.
 
 ### Block Info
 
-This Block is modeled on the schema from Fivetrans's [LinkedIn Ads ETL](https://fivetran.com/directory/linkedin-ads).
+This Block is modeled on the schema from Fivetrans's [LinkedIn Ads ETL](https://fivetran.com/directory/linkedin-ads) brought over with Looker-specific connector (https://fivetran.com/integrations/linkedin_ads_looker).
 
 The schema documentation for LinkedIn Ads can be found in [LinkedIn's docs](https://developer.linkedin.com/docs/ref/v2/ads/adcampaigns).
 
