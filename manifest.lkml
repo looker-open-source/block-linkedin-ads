@@ -21,7 +21,7 @@ remote_dependency: app-marketing-linkedin-ads {
 
 # LookML to map the ETL and data warehouse for LinkedIn Ads
 constant: CONNECTION_NAME {
-  value: "looker_app_2"
+  value: "4mile_bigquery"
   export: override_required
 }
 
