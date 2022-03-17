@@ -13,23 +13,12 @@
     },
     "LINKEDIN_SCHEMA": {
       "label": "LinkedIn Schema Name"
-    },
-    "CONFIG_PROJECT_NAME": {
-      "label": "Config Project Name"
     }
   },
   "models": [
     {
       "name": "block_linkedin_ads",
       "connection_constant": "CONNECTION_NAME"
-    }
-  ],
-  "auxiliary_projects": [
-    {
-      "git_uri": "git://github.com/looker/block-linkedin-ads-config.git",
-      "git_ref": "037bf4b6dfa1c3a92ebfd61beed939a71897f3d8",
-      "label": "LinkedIn Ads Config",
-      "constant_name": "CONFIG_PROJECT_NAME"
     }
   ]
 }
