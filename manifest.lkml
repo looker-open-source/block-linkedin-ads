@@ -3,7 +3,7 @@ project_name: "block-linkedin-ads"
 
 # LookML to map the ETL and data warehouse for LinkedIn Ads
 constant: CONNECTION_NAME {
-  value: "4mile_bigquery"
+  value: "connection_name"
   export: override_required
 }
 

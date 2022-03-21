@@ -137,7 +137,7 @@
     fields: [last_fact.total_clicks_period_delta, last_fact.total_clicks, fact.total_clicks,
       fact.ad_title, fact.campaign_name]
     filters:
-      fact.total_conversions_period_delta_abs: ">0"
+      fact.total_conversions_period_delta: ">0"
     sorts: [last_fact.total_clicks_period_delta desc]
     limit: 50
     column_limit: 50
