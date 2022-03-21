@@ -1,6 +1,5 @@
 - dashboard: linked_ads_conversions
   title: Linked Ads - Conversions
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"

@@ -1,6 +1,5 @@
 - dashboard: linkedin_ads_impressions
   title: LinkedIn Ads - Impressions
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"

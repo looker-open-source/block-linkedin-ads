@@ -1,469 +1,54 @@
-view: ad_metrics_base {
-  extension: required
-  extends: [ad_metrics_base_config]
-  measure: average_click_rate {
-    label: "Click Through Rate"
-    description: "Percent of people that click on an ad."
-    type: number
-    sql: ${total_clicks}*1.0/nullif(${total_impressions},0) ;;
-    value_format_name: percent_2
-    drill_fields: [fact.date_date, campaign.name, average_click_rate]
+## LI Period
+view: li_period_fact {
+  extends: [linkedin_ads_config, date_base, period_base, ad_metrics_base]
+  derived_table: {
+    datagroup_trigger: linkedin_ads_etl_datagroup
+    explore_source: linkedin_ads_ad_impressions {
+      column: _date { field: fact.date_date }
+      column: account_name { field: fact.account_name }
+      column: account_id { field: fact.account_id }
+      column: campaign_id { field: fact.campaign_id }
+      column: campaign_name { field: fact.campaign_name }
+      column: clicks { field: fact.total_clicks }
+      column: conversions { field: fact.total_conversions }
+      column: conversionvalue { field: fact.total_conversionvalue }
+      column: cost { field: fact.total_cost }
+      column: impressions { field: fact.total_impressions }
+    }
   }
 
-  measure: average_cost_per_conversion {
-    label: "Cost per Conversion"
-    description: "Cost per conversion."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_conversions},0) ;;
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, fact.average_cost_per_conversion]
+  dimension: key_base {
+    hidden: yes
+    sql: CONCAT(CAST(${account_id} AS STRING),"-", CAST(${campaign_id} AS STRING));;
   }
 
-  measure: average_value_per_conversion {
-    label: "Value per Conversion"
-    description: "Average value per conversion."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_conversions},0) ;;
-    value_format_name: usd
+  dimension: primary_key {
+    primary_key: yes
+    hidden: yes
+    sql: CONCAT(CAST(${date_period} AS STRING)
+              , "|", CAST(${date_day_of_period} AS STRING)
+              , "|", ${key_base}
+            ) ;;
   }
-
-  measure: average_cost_per_click {
-    label: "Cost per Click"
-    description: "Average cost per ad click."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, average_cost_per_click]
+  dimension: account_id {
+    hidden: yes
   }
-
-  measure: average_value_per_click {
-    label: "Value per Click"
-    description: "Average value per ad click."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: usd
+  dimension: campaign_id {
+    hidden: yes
   }
-
-  measure: average_cost_per_impression {
-    label: "CPM"
-    description: "Average cost per ad impression viewed."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_impressions},0) * 1000.0 ;;
-    value_format_name: usd
+  dimension: account_name {}
+  dimension: campaign_name {}
+  dimension: date_day_of_period {
+    hidden:  yes
   }
-
-  measure: average_value_per_impression {
-    label: "Value per Impression"
-    description: "Average value per ad impression viewed."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_impressions},0) ;;
-    value_format_name: usd
-  }
-
-  measure: average_value_per_cost {
-    label: "ROAS"
-    description: "Average Return on Ad Spend."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_cost},0) ;;
-    value_format_name: percent_0
-  }
-
-  measure: average_conversion_rate {
-    label: "Conversion Rate"
-    description: "Percent of people that convert after they interact with an ad."
-    type: number
-    sql: ${total_conversions}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: percent_2
-    drill_fields: [fact.date_date, campaign.name, average_conversion_rate]
-  }
-
-  measure: cumulative_spend {
-    type: running_total
-    sql: ${total_cost} ;;
-    drill_fields: [fact.date_date, campaign.name, fact.total_cost]
-    value_format_name: usd_0
-    direction: "column"
-  }
-
-  measure: cumulative_conversions {
-    type: running_total
-    sql: ${total_conversions} ;;
-    drill_fields: [fact.date_date, campaign.name, fact.total_cost]
-    value_format_name: decimal_0
-    direction: "column"
-  }
-
-  measure: total_clicks {
-    label: "Clicks"
-    description: "Total ad clicks."
-    type: sum
-    sql: ${clicks} ;;
-    value_format_name: decimal_0
-    drill_fields: [fact.date_date, campaign.name, total_clicks]
-  }
-
-  measure: total_conversions {
-    label: "Conversions"
-    description: "Total conversions."
-    type: sum
-    sql: ${conversions} ;;
-    value_format_name: decimal_0
-    drill_fields: [fact.date_date, campaign.name, total_conversions]
-  }
-
-  measure: total_conversionvalue {
-    label: "Conv. Value"
-    description: "Total conversion value."
-    type: sum
-    sql: ${conversionvalue} ;;
-    value_format_name: usd_0
-  }
-
-  measure: total_cost {
-    label: "Cost"
-    description: "Total cost."
-    type: sum
-    sql: ${cost} ;;
-    value_format_name: usd_0
-    drill_fields: [fact.date_date, campaign.name, total_cost]
-  }
-
-  measure: total_impressions {
-    label: "Impressions"
-    description: "Total ad impressions."
-    type:  sum
-    sql:  ${impressions} ;;
-    drill_fields: [external_customer_id, total_impressions]
-    value_format_name: decimal_0
-  }
-
-  set: ad_metrics_set {
-    fields: [
-      cost,
-      impressions,
-      clicks,
-      conversions,
-      conversionvalue,
-      click_rate,
-      conversion_rate,
-      cost_per_impression,
-      cost_per_click,
-      cost_per_conversion,
-      total_cost,
-      total_impressions,
-      total_clicks,
-      total_conversions,
-      total_conversionvalue,
-      average_click_rate,
-      average_conversion_rate,
-      average_cost_per_impression,
-      average_cost_per_click,
-      average_cost_per_conversion,
-      cumulative_conversions,
-      cumulative_spend,
-      average_value_per_cost
-    ]
+  dimension: _date {
+    type: date_raw
   }
 }
 view: li_period_comparison {
-  extends: [li_period_comparison_config]
-}
-view: linkedin_ad_impressions_campaign {
-  extends: [linkedin_ad_impressions_campaign_config]
-}
-view: linkedin_ad_impressions_ad {
-  extends: [linkedin_ad_impressions_ad_config]
-}
-view: linkedin_ads_config {
-  extension: required
-
-# Should remain hidden as it's not intended to be used as a column.
-  dimension: linkedin_ads_schema {
-    hidden: yes
-    sql:@{LINKEDIN_SCHEMA};;
-  }
-}
-
-# Config
-view: ad_metrics_base_config {
-  extends: [ad_metrics_base_template]
-  extension: required
-}
-view: li_period_comparison_config {
   extends: [li_period_fact]
-  extension: required
-}
-view: linkedin_ad_impressions_campaign_config {
-  extends: [linkedin_ad_impressions_campaign_template]
-  extension: required
-}
-view: linkedin_ad_impressions_ad_config {
-  extends: [linkedin_ad_impressions_ad_template]
-  extension: required
 }
 
-## Adapter Ad Impressions
-# Views and Explores for linkedin Ads rolled up stats tables
-view: linkedin_ad_metrics_base_dimensions {
-  extension: required
-
-  dimension: action_clicks {
-    type: number
-    sql: ${TABLE}.action_clicks ;;
-  }
-
-  dimension: ad_unit_clicks {
-    type: number
-    sql: ${TABLE}.ad_unit_clicks ;;
-  }
-
-  dimension: card_clicks {
-    type: number
-    sql: ${TABLE}.card_clicks ;;
-  }
-
-  dimension: card_impressions {
-    type: number
-    sql: ${TABLE}.card_impressions ;;
-  }
-
-  dimension: clicks {
-    type: number
-    sql: ${TABLE}.clicks ;;
-  }
-
-  dimension: comments {
-    type: number
-    sql: ${TABLE}.comments ;;
-  }
-
-  dimension: comments_likes {
-    type: number
-    sql: ${TABLE}.comments_likes ;;
-  }
-
-  dimension: company_page_clicks {
-    type: number
-    sql: ${TABLE}.company_page_clicks ;;
-  }
-
-  dimension: conversion_value_in_local_currency {
-    type: number
-    sql: ${TABLE}.conversion_value_in_local_currency ;;
-  }
-
-  dimension: cost_in_local_currency {
-    type: number
-    sql: ${TABLE}.cost_in_local_currency ;;
-  }
-
-  dimension: cost_in_usd {
-    type: number
-    sql: ${TABLE}.cost_in_usd ;;
-  }
-
-  dimension: external_website_conversions {
-    type: number
-    sql: ${TABLE}.external_website_conversions ;;
-  }
-
-  dimension: external_website_post_click_conversions {
-    type: number
-    sql: ${TABLE}.external_website_post_click_conversions ;;
-  }
-
-  dimension: external_website_post_view_conversions {
-    type: number
-    sql: ${TABLE}.external_website_post_view_conversions ;;
-  }
-
-  dimension: follows {
-    type: number
-    sql: ${TABLE}.follows ;;
-  }
-
-  dimension: impressions {
-    type: number
-    sql: ${TABLE}.impressions ;;
-  }
-
-  dimension: landing_page_clicks {
-    type: number
-    sql: ${TABLE}.landing_page_clicks ;;
-  }
-
-  dimension: likes {
-    type: number
-    sql: ${TABLE}.likes ;;
-  }
-
-  dimension: shares {
-    type: number
-    sql: ${TABLE}.shares ;;
-  }
-
-  dimension: text_url_clicks {
-    type: number
-    sql: ${TABLE}.text_url_clicks ;;
-  }
-
-  dimension: total_engagements {
-    type: number
-    sql: ${TABLE}.total_engagements ;;
-  }
-
-  dimension: video_completions {
-    type: number
-    sql: ${TABLE}.video_completions ;;
-  }
-
-  dimension: video_views {
-    type: number
-    sql: ${TABLE}.video_views ;;
-  }
-
-  dimension: viral_card_clicks {
-    type: number
-    sql: ${TABLE}.viral_card_clicks ;;
-  }
-
-  dimension: viral_card_impressions {
-    type: number
-    sql: ${TABLE}.viral_card_impressions ;;
-  }
-
-  dimension: viral_clicks {
-    type: number
-    sql: ${TABLE}.viral_clicks ;;
-  }
-
-  dimension: viral_comment_likes {
-    type: number
-    sql: ${TABLE}.viral_comment_likes ;;
-  }
-
-  dimension: viral_comments {
-    type: number
-    sql: ${TABLE}.viral_comments ;;
-  }
-
-  dimension: viral_comments_likes {
-    type: number
-    sql: ${TABLE}.viral_comments_likes ;;
-  }
-
-  dimension: viral_company_page_clicks {
-    type: number
-    sql: ${TABLE}.viral_company_page_clicks ;;
-  }
-
-  dimension: viral_extrernal_website_conversions {
-    type: number
-    sql: ${TABLE}.viral_extrernal_website_conversions ;;
-  }
-
-  dimension: viral_extrernal_website_post_click_conversions {
-    type: number
-    sql: ${TABLE}.viral_extrernal_website_post_click_conversions ;;
-  }
-
-  dimension: viral_extrernal_website_post_view_conversions {
-    type: number
-    sql: ${TABLE}.viral_extrernal_website_post_view_conversions ;;
-  }
-
-  dimension: viral_follows {
-    type: number
-    sql: ${TABLE}.viral_follows ;;
-  }
-
-  dimension: viral_impressions {
-    type: number
-    sql: ${TABLE}.viral_impressions ;;
-  }
-
-  dimension: viral_landing_page_clicks {
-    type: number
-    sql: ${TABLE}.viral_landing_page_clicks ;;
-  }
-
-  dimension: viral_likes {
-    type: number
-    sql: ${TABLE}.viral_likes ;;
-  }
-
-  dimension: viral_one_click_leads {
-    type: number
-    sql: ${TABLE}.viral_one_click_leads ;;
-  }
-
-  dimension: viral_shares {
-    type: number
-    sql: ${TABLE}.viral_shares ;;
-  }
-
-  dimension: viral_total_engagements {
-    type: number
-    sql: ${TABLE}.viral_total_engagements ;;
-  }
-
-  dimension: viral_video_completions {
-    type: number
-    sql: ${TABLE}.viral_video_completions ;;
-  }
-
-  dimension: viral_video_views {
-    type: number
-    sql: ${TABLE}.viral_video_views ;;
-  }
-}
-view: linkedin_ad_impressions_campaign_adapter {
-  extends: [linkedin_ad_impressions_campaign_adapter_base]
-  sql_table_name: {{ linkedin_ads_schema._sql }}.ad_analytics_by_campaign ;;
-}
-view: linkedin_ad_impressions_campaign_adapter_base {
-  extends: [linkedin_ads_config, linkedin_ad_metrics_base_dimensions]
-
-  dimension: campaign_id {
-    hidden: yes
-    type: number
-  }
-
-  dimension: campaign_id_string {
-    hidden: yes
-    sql: CAST(${TABLE}.campaign_id as STRING) ;;
-  }
-
-  dimension: _date {
-    hidden: yes
-    type: date
-    sql: ${TABLE}.day ;;
-  }
-}
-view: linkedin_ad_impressions_ad_adapter {
-  extends: [linkedin_ads_config, linkedin_ad_metrics_base_dimensions]
-  sql_table_name: {{ linkedin_ads_schema._sql }}.ad_analytics_by_creative ;;
-
-  dimension: ad_id {
-    hidden: yes
-    type: number
-    sql: ${TABLE}.creative_id ;;
-  }
-
-  dimension: _date {
-    hidden: yes
-    type: date
-    sql: ${TABLE}.day ;;
-  }
-
-  dimension: ad_id_string {
-    hidden: yes
-    sql: CAST(${TABLE}.creative_id as STRING) ;;
-  }
-
-}
-
-## Adapter LinkedIn Account
 view: linkedin_account {
   extends: [linkedin_ads_config]
   derived_table: {
@@ -598,26 +183,49 @@ view: linkedin_account {
     drill_fields: [id, name]
   }
 }
+view: linkedin_ad_impressions_ad {
+  extends: [date_base, period_base, linkedin_ad_metrics_base, linkedin_ads_config, linkedin_ad_metrics_base_dimensions]
 
-## Adapter linkedin_ad_metrics_base
-view: linkedin_ad_metrics_base {
-  extension: required
-  extends: [ad_metrics_base]
+  sql_table_name: {{ linkedin_ads_schema._sql }}.ad_analytics_by_creative ;;
 
-  dimension: conversions {
-    sql: ${external_website_conversions} ;;
+  dimension: ad_id {
+    hidden: yes
+    type: number
+    sql: ${TABLE}.creative_id ;;
   }
 
-  dimension: conversionvalue {
-    sql: ${conversion_value_in_local_currency} ;;
+  dimension: _date {
+    hidden: yes
+    type: date
+    sql: ${TABLE}.day ;;
   }
 
-  dimension: cost {
-    sql: ${cost_in_local_currency} ;;
+  dimension: ad_id_string {
+    hidden: yes
+    sql: CAST(${TABLE}.creative_id as STRING) ;;
+  }
+
+}
+view: linkedin_ad_impressions_campaign {
+  extends: [date_base, period_base, linkedin_ad_metrics_base, linkedin_ads_config, linkedin_ad_metrics_base_dimensions]
+  sql_table_name: {{ linkedin_ads_schema._sql }}.ad_analytics_by_campaign ;;
+
+  dimension: campaign_id {
+    hidden: yes
+    type: number
+  }
+
+  dimension: campaign_id_string {
+    hidden: yes
+    sql: CAST(${TABLE}.campaign_id as STRING) ;;
+  }
+
+  dimension: _date {
+    hidden: yes
+    type: date
+    sql: ${TABLE}.day ;;
   }
 }
-
-## Adapter linkedin_campaign
 view: linkedin_campaign {
   extends: [linkedin_ads_config]
   derived_table: {
@@ -820,8 +428,6 @@ view: linkedin_campaign {
     drill_fields: [id, name]
   }
 }
-
-## Adapter linkedin_campaign_group
 view: linkedin_campaign_group {
   extends: [linkedin_ads_config]
   derived_table: {
@@ -939,8 +545,6 @@ view: linkedin_campaign_group {
     drill_fields: [id, name]
   }
 }
-
-## Adapter linkedin_creative
 view: linkedin_creative {
   extends: [linkedin_ads_config]
   derived_table: {
@@ -1155,8 +759,6 @@ view: linkedin_creative {
     drill_fields: [id, organization_name, forum_name, company_name]
   }
 }
-
-## Adapter linkedin_video_ad
 view: linkedin_video_ad {
   derived_table: {
     sql:
@@ -1259,88 +861,10 @@ view: linkedin_video_ad {
   }
 }
 
-## App ad_impressions
-view: linkedin_ad_impressions_base {
-  extends: [date_base, period_base, linkedin_ad_metrics_base]
-}
-view: linkedin_ad_impressions_campaign_template {
-  extends: [linkedin_ad_impressions_base, linkedin_ad_impressions_campaign_adapter]
-}
-view: linkedin_ad_impressions_ad_template {
-  extends: [linkedin_ad_impressions_base, linkedin_ad_impressions_ad_adapter]
-}
-
-## App li_period_fact
-view: li_period_fact {
-  extends: [linkedin_ads_config, date_base, period_base, ad_metrics_base]
-  derived_table: {
-    datagroup_trigger: linkedin_ads_etl_datagroup
-    explore_source: linkedin_ads_ad_impressions {
-      column: _date { field: fact.date_date }
-      column: account_name { field: fact.account_name }
-      column: account_id { field: fact.account_id }
-      column: campaign_id { field: fact.campaign_id }
-      column: campaign_name { field: fact.campaign_name }
-      column: clicks { field: fact.total_clicks }
-      column: conversions { field: fact.total_conversions }
-      column: conversionvalue { field: fact.total_conversionvalue }
-      column: cost { field: fact.total_cost }
-      column: impressions { field: fact.total_impressions }
-    }
-  }
-
-  dimension: key_base {
-    hidden: yes
-    sql: CONCAT(CAST(${account_id} AS STRING),"-", CAST(${campaign_id} AS STRING));;
-  }
-
-  dimension: primary_key {
-    primary_key: yes
-    hidden: yes
-    sql: CONCAT(CAST(${date_period} AS STRING)
-              , "|", CAST(${date_day_of_period} AS STRING)
-              , "|", ${key_base}
-            ) ;;
-  }
-  dimension: account_id {
-    hidden: yes
-  }
-  dimension: campaign_id {
-    hidden: yes
-  }
-  dimension: account_name {}
-  dimension: campaign_name {}
-  dimension: date_day_of_period {
-    hidden:  yes
-  }
-  dimension: _date {
-    type: date_raw
-  }
-}
-
-## App linkedin_ad_date_fact
-view: linkedin_ad_key_base {
-  extends: [date_primary_key_base]
-  extension: required
-
-  dimension: ad_key_base {
-    hidden: yes
-    sql: {% if _dialect._name == 'snowflake' %}
-        TO_CHAR(${campaign_id}) || '-' ||  TO_CHAR(${ad_id})
-      {% elsif _dialect._name == 'redshift' %}
-        CAST(${campaign_id} AS VARCHAR) || '-' || CAST(${ad_id} AS VARCHAR)
-      {% else %}
-        CONCAT(CAST(${campaign_id} AS STRING), "-", CAST(${ad_id} AS STRING))
-      {% endif %} ;;
-  }
-  dimension: key_base {
-    hidden: yes
-    sql: ${ad_key_base} ;;
-  }
-}
+## Derived Views
 view: linkedin_ad_date_fact {
   extends: [date_base, linkedin_ad_metrics_base, period_base,
-    ad_metrics_period_comparison_base, linkedin_ad_key_base]
+    ad_metrics_period_comparison_base, date_primary_key_base]
   derived_table: {
     datagroup_trigger: linkedin_ads_etl_datagroup
     explore_source: linkedin_ad_impressions_ad {
@@ -1396,12 +920,25 @@ view: linkedin_ad_date_fact {
     sql: CAST(${TABLE}._date AS DATE) ;;
   }
 
+  dimension: ad_key_base {
+    hidden: yes
+    sql: {% if _dialect._name == 'snowflake' %}
+        TO_CHAR(${campaign_id}) || '-' ||  TO_CHAR(${ad_id})
+      {% elsif _dialect._name == 'redshift' %}
+        CAST(${campaign_id} AS VARCHAR) || '-' || CAST(${ad_id} AS VARCHAR)
+      {% else %}
+        CONCAT(CAST(${campaign_id} AS STRING), "-", CAST(${ad_id} AS STRING))
+      {% endif %} ;;
+  }
+  dimension: key_base {
+    hidden: yes
+    sql: ${ad_key_base} ;;
+  }
+
   set: detail {
     fields: [ad_id]
   }
 }
-
-## App linkedin_ads_ad_impressions
 view: linkedin_ads_ad_impressions {
   extends: [ad_metrics_base, date_base, period_base, date_primary_key_base]
 
@@ -1460,30 +997,9 @@ view: linkedin_ads_ad_impressions {
     sql: ${cross_channel_ad_group_key_base} ;;
   }
 }
-
-## App linkedin_campaign_date_fact
-view: linkedin_campaign_key_base {
-  extends: [date_primary_key_base]
-  extension: required
-
-  dimension: campaign_key_base {
-    hidden: yes
-    sql: {% if _dialect._name == 'snowflake' %}
-         TO_CHAR(${campaign_id})
-      {% elsif _dialect._name == 'redshift' %}
-        CAST(${campaign_id} AS VARCHAR)
-      {% else %}
-        CAST(${campaign_id} as STRING)
-      {% endif %} ;;
-  }
-  dimension: key_base {
-    hidden: yes
-    sql: ${campaign_key_base} ;;
-  }
-}
 view: linkedin_campaign_date_fact {
   extends: [date_base, linkedin_ad_metrics_base, period_base,
-    ad_metrics_period_comparison_base, linkedin_campaign_key_base]
+    ad_metrics_period_comparison_base, date_primary_key_base]
   derived_table: {
     datagroup_trigger: linkedin_ads_etl_datagroup
     explore_source: linkedin_ad_impressions_campaign {
@@ -1531,12 +1047,441 @@ view: linkedin_campaign_date_fact {
     hidden: no
   }
 
+  dimension: campaign_key_base {
+    hidden: yes
+    sql: {% if _dialect._name == 'snowflake' %}
+         TO_CHAR(${campaign_id})
+      {% elsif _dialect._name == 'redshift' %}
+        CAST(${campaign_id} AS VARCHAR)
+      {% else %}
+        CAST(${campaign_id} as STRING)
+      {% endif %} ;;
+  }
+  dimension: key_base {
+    hidden: yes
+    sql: ${campaign_key_base} ;;
+  }
+
   set: detail {
     fields: [campaign_id]
   }
 }
 
-## Common
+## Extended/Base Views
+view: ad_metrics_base {
+  extension: required
+  extends: [ad_metrics_dimension_base]
+  measure: average_click_rate {
+    label: "Click Through Rate"
+    description: "Percent of people that click on an ad."
+    type: number
+    sql: ${total_clicks}*1.0/nullif(${total_impressions},0) ;;
+    value_format_name: percent_2
+    drill_fields: [fact.date_date, campaign.name, average_click_rate]
+  }
+
+  measure: average_cost_per_conversion {
+    label: "Cost per Conversion"
+    description: "Cost per conversion."
+    type: number
+    sql: ${total_cost}*1.0 / NULLIF(${total_conversions},0) ;;
+    value_format_name: usd
+    drill_fields: [fact.date_date, campaign.name, fact.average_cost_per_conversion]
+  }
+
+  measure: average_value_per_conversion {
+    label: "Value per Conversion"
+    description: "Average value per conversion."
+    type: number
+    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_conversions},0) ;;
+    value_format_name: usd
+  }
+
+  measure: average_cost_per_click {
+    label: "Cost per Click"
+    description: "Average cost per ad click."
+    type: number
+    sql: ${total_cost}*1.0 / NULLIF(${total_clicks},0) ;;
+    value_format_name: usd
+    drill_fields: [fact.date_date, campaign.name, average_cost_per_click]
+  }
+
+  measure: average_cost_per_value {
+    label: "Cost per value"
+    description: "Cost per value."
+    type: number
+    sql: ${total_cost}*1.0 / NULLIF(${total_conversionvalue},0) ;;
+    value_format_name: usd
+    drill_fields: [fact.date_date, campaign.name, fact.total_conversionvalue, fact.total_cost, fact.average_cost_per_conversion]
+  }
+
+  measure: average_value_per_click {
+    label: "Value per Click"
+    description: "Average value per ad click."
+    type: number
+    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_clicks},0) ;;
+    value_format_name: usd
+  }
+
+  measure: average_cost_per_impression {
+    label: "CPM"
+    description: "Average cost per ad impression viewed."
+    type: number
+    sql: ${total_cost}*1.0 / NULLIF(${total_impressions},0) * 1000.0 ;;
+    value_format_name: usd
+  }
+
+  measure: average_value_per_impression {
+    label: "Value per Impression"
+    description: "Average value per ad impression viewed."
+    type: number
+    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_impressions},0) ;;
+    value_format_name: usd
+  }
+
+  measure: average_value_per_cost {
+    label: "ROAS"
+    description: "Average Return on Ad Spend."
+    type: number
+    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_cost},0) ;;
+    value_format_name: percent_0
+  }
+
+  measure: average_conversion_rate {
+    label: "Conversion Rate"
+    description: "Percent of people that convert after they interact with an ad."
+    type: number
+    sql: ${total_conversions}*1.0 / NULLIF(${total_clicks},0) ;;
+    value_format_name: percent_2
+    drill_fields: [fact.date_date, campaign.name, average_conversion_rate]
+  }
+
+  measure: cumulative_spend {
+    type: running_total
+    sql: ${total_cost} ;;
+    drill_fields: [fact.date_date, campaign.name, fact.total_cost]
+    value_format_name: usd_0
+    direction: "column"
+  }
+
+  measure: cumulative_conversions {
+    type: running_total
+    sql: ${total_conversions} ;;
+    drill_fields: [fact.date_date, campaign.name, fact.total_cost]
+    value_format_name: decimal_0
+    direction: "column"
+  }
+
+  measure: total_clicks {
+    label: "Clicks"
+    description: "Total ad clicks."
+    type: sum
+    sql: ${clicks} ;;
+    value_format_name: decimal_0
+    drill_fields: [fact.date_date, campaign.name, total_clicks]
+  }
+
+  measure: total_conversions {
+    label: "Conversions"
+    description: "Total conversions."
+    type: sum
+    sql: ${conversions} ;;
+    value_format_name: decimal_0
+    drill_fields: [fact.date_date, campaign.name, total_conversions]
+  }
+
+  measure: total_conversionvalue {
+    label: "Conv. Value"
+    description: "Total conversion value."
+    type: sum
+    sql: ${conversionvalue} ;;
+    value_format_name: usd_0
+  }
+
+  measure: total_cost {
+    label: "Cost"
+    description: "Total cost."
+    type: sum
+    sql: ${cost} ;;
+    value_format_name: usd_0
+    drill_fields: [fact.date_date, campaign.name, total_cost]
+  }
+
+  measure: total_impressions {
+    label: "Impressions"
+    description: "Total ad impressions."
+    type:  sum
+    sql:  ${impressions} ;;
+    drill_fields: [external_customer_id, total_impressions]
+    value_format_name: decimal_0
+  }
+
+  set: ad_metrics_set {
+    fields: [
+      cost,
+      impressions,
+      clicks,
+      conversions,
+      conversionvalue,
+      click_rate,
+      conversion_rate,
+      cost_per_impression,
+      cost_per_click,
+      cost_per_conversion,
+      total_cost,
+      total_impressions,
+      total_clicks,
+      total_conversions,
+      total_conversionvalue,
+      average_click_rate,
+      average_conversion_rate,
+      average_cost_per_impression,
+      average_cost_per_click,
+      average_cost_per_conversion,
+      cumulative_conversions,
+      cumulative_spend,
+      average_value_per_cost
+    ]
+  }
+}
+view: linkedin_ad_metrics_base {
+  extension: required
+  extends: [ad_metrics_base]
+
+  dimension: conversions {
+    sql: ${external_website_conversions} ;;
+  }
+
+  dimension: conversionvalue {
+    sql: ${conversion_value_in_local_currency} ;;
+  }
+
+  dimension: cost {
+    sql: ${cost_in_local_currency} ;;
+  }
+}
+view: linkedin_ad_metrics_base_dimensions {
+  extension: required
+
+  dimension: action_clicks {
+    type: number
+    sql: ${TABLE}.action_clicks ;;
+  }
+
+  dimension: ad_unit_clicks {
+    type: number
+    sql: ${TABLE}.ad_unit_clicks ;;
+  }
+
+  dimension: card_clicks {
+    type: number
+    sql: ${TABLE}.card_clicks ;;
+  }
+
+  dimension: card_impressions {
+    type: number
+    sql: ${TABLE}.card_impressions ;;
+  }
+
+  dimension: clicks {
+    type: number
+    sql: ${TABLE}.clicks ;;
+  }
+
+  dimension: comments {
+    type: number
+    sql: ${TABLE}.comments ;;
+  }
+
+  dimension: comments_likes {
+    type: number
+    sql: ${TABLE}.comments_likes ;;
+  }
+
+  dimension: company_page_clicks {
+    type: number
+    sql: ${TABLE}.company_page_clicks ;;
+  }
+
+  dimension: conversion_value_in_local_currency {
+    type: number
+    sql: ${TABLE}.conversion_value_in_local_currency ;;
+  }
+
+  dimension: cost_in_local_currency {
+    type: number
+    sql: ${TABLE}.cost_in_local_currency ;;
+  }
+
+  dimension: cost_in_usd {
+    type: number
+    sql: ${TABLE}.cost_in_usd ;;
+  }
+
+  dimension: external_website_conversions {
+    type: number
+    sql: ${TABLE}.external_website_conversions ;;
+  }
+
+  dimension: external_website_post_click_conversions {
+    type: number
+    sql: ${TABLE}.external_website_post_click_conversions ;;
+  }
+
+  dimension: external_website_post_view_conversions {
+    type: number
+    sql: ${TABLE}.external_website_post_view_conversions ;;
+  }
+
+  dimension: follows {
+    type: number
+    sql: ${TABLE}.follows ;;
+  }
+
+  dimension: impressions {
+    type: number
+    sql: ${TABLE}.impressions ;;
+  }
+
+  dimension: landing_page_clicks {
+    type: number
+    sql: ${TABLE}.landing_page_clicks ;;
+  }
+
+  dimension: likes {
+    type: number
+    sql: ${TABLE}.likes ;;
+  }
+
+  dimension: shares {
+    type: number
+    sql: ${TABLE}.shares ;;
+  }
+
+  dimension: text_url_clicks {
+    type: number
+    sql: ${TABLE}.text_url_clicks ;;
+  }
+
+  dimension: total_engagements {
+    type: number
+    sql: ${TABLE}.total_engagements ;;
+  }
+
+  dimension: video_completions {
+    type: number
+    sql: ${TABLE}.video_completions ;;
+  }
+
+  dimension: video_views {
+    type: number
+    sql: ${TABLE}.video_views ;;
+  }
+
+  dimension: viral_card_clicks {
+    type: number
+    sql: ${TABLE}.viral_card_clicks ;;
+  }
+
+  dimension: viral_card_impressions {
+    type: number
+    sql: ${TABLE}.viral_card_impressions ;;
+  }
+
+  dimension: viral_clicks {
+    type: number
+    sql: ${TABLE}.viral_clicks ;;
+  }
+
+  dimension: viral_comment_likes {
+    type: number
+    sql: ${TABLE}.viral_comment_likes ;;
+  }
+
+  dimension: viral_comments {
+    type: number
+    sql: ${TABLE}.viral_comments ;;
+  }
+
+  dimension: viral_comments_likes {
+    type: number
+    sql: ${TABLE}.viral_comments_likes ;;
+  }
+
+  dimension: viral_company_page_clicks {
+    type: number
+    sql: ${TABLE}.viral_company_page_clicks ;;
+  }
+
+  dimension: viral_extrernal_website_conversions {
+    type: number
+    sql: ${TABLE}.viral_extrernal_website_conversions ;;
+  }
+
+  dimension: viral_extrernal_website_post_click_conversions {
+    type: number
+    sql: ${TABLE}.viral_extrernal_website_post_click_conversions ;;
+  }
+
+  dimension: viral_extrernal_website_post_view_conversions {
+    type: number
+    sql: ${TABLE}.viral_extrernal_website_post_view_conversions ;;
+  }
+
+  dimension: viral_follows {
+    type: number
+    sql: ${TABLE}.viral_follows ;;
+  }
+
+  dimension: viral_impressions {
+    type: number
+    sql: ${TABLE}.viral_impressions ;;
+  }
+
+  dimension: viral_landing_page_clicks {
+    type: number
+    sql: ${TABLE}.viral_landing_page_clicks ;;
+  }
+
+  dimension: viral_likes {
+    type: number
+    sql: ${TABLE}.viral_likes ;;
+  }
+
+  dimension: viral_one_click_leads {
+    type: number
+    sql: ${TABLE}.viral_one_click_leads ;;
+  }
+
+  dimension: viral_shares {
+    type: number
+    sql: ${TABLE}.viral_shares ;;
+  }
+
+  dimension: viral_total_engagements {
+    type: number
+    sql: ${TABLE}.viral_total_engagements ;;
+  }
+
+  dimension: viral_video_completions {
+    type: number
+    sql: ${TABLE}.viral_video_completions ;;
+  }
+
+  dimension: viral_video_views {
+    type: number
+    sql: ${TABLE}.viral_video_views ;;
+  }
+}
+view: linkedin_ads_config {
+  extension: required
+
+# Should remain hidden as it's not intended to be used as a column.
+  dimension: linkedin_ads_schema {
+    hidden: yes
+    sql:@{LINKEDIN_SCHEMA};;
+  }
+}
 view: date_primary_key_base {
   extension: required
 
@@ -1577,7 +1522,6 @@ view: date_base {
     type: date
     convert_tz: no
     sql: CAST(${date_week} AS DATE) ;;
-#     expression: to_date(${date_week}) ;;
   }
 
   dimension: date_month_date {
@@ -1593,7 +1537,6 @@ view: date_base {
         DATE_TRUNC(MONTH, ${date_date})
       {% endif %}
     ;;
-#     expression: trunc_months(${date_date});;
     }
 
     dimension: date_quarter_date {
@@ -1607,7 +1550,6 @@ view: date_base {
       {% else %}
         DATE_TRUNC(${date_date}, QUARTER)
       {% endif %} ;;
-#     expression: trunc_quarters(${date_date});;
       }
 
       dimension: date_year_date {
@@ -1621,7 +1563,6 @@ view: date_base {
                   {% else %}
                   DATE_TRUNC(${date_date}, YEAR)
                 {% endif %}  ;;
-          #     expression: trunc_years(${date_date}) ;;
         }
 
         dimension: date_day_of_quarter {
@@ -1634,7 +1575,6 @@ view: date_base {
                     {% else %}
                     DATE_DIFF(${date_date}, ${date_quarter_date}, day)
                   {% endif %}  ;;
-            #     expression: diff_days(${date_quarter_date}, ${date_date}) ;;
           }
 
           dimension: date_last_week {
@@ -1648,7 +1588,6 @@ view: date_base {
                       {% else %}
                       DATE_ADD(${date_date}), INTERVAL -1 WEEK)
                     {% endif %} ;;
-              #     expression: add_days(${date_date}, 7) ;;
             }
 
             dimension: date_last_month {
@@ -1662,7 +1601,6 @@ view: date_base {
                         {% else %}
                         DATE_ADD(${date_date}), INTERVAL -1 MONTH)
                       {% endif %} ;;
-                #     expression: add_months(${date_date}, 1) ;;
               }
 
               dimension: date_last_quarter {
@@ -1676,7 +1614,6 @@ view: date_base {
                           {% else %}
                           DATE_ADD(${date_date}), INTERVAL -1 QUARTER)
                           {% endif %} ;;
-                  #     expression: add_months(${date_date}, -3) ;;
                 }
 
                 dimension: date_next_week {
@@ -1688,7 +1625,6 @@ view: date_base {
                               {% else %}
                               DATE_ADD(${date_date}), INTERVAL 1 WEEK)
                               {% endif %} ;;
-                    #     expression: add_days(${date_date}, 7) ;;
                   }
 
                   dimension: date_next_month {
@@ -1700,7 +1636,6 @@ view: date_base {
                                 {% else %}
                                 DATE_ADD(${date_date}), INTERVAL 1 MONTH)
                                 {% endif %}  ;;
-                      #     expression: add_months(${date_date}, 1) ;;
                     }
 
                     dimension: date_next_quarter {
@@ -1712,7 +1647,6 @@ view: date_base {
                                   {% else %}
                                   DATE_ADD(${date_date}), INTERVAL 1 QUARTER)
                                   {% endif %}  ;;
-                        #     expression: add_months(${date_date}, 3) ;;
                       }
 
                       dimension: date_next_year {
@@ -1724,7 +1658,6 @@ view: date_base {
                                     {% else %}
                                     DATE_ADD(${date_date}), INTERVAL 1 YEAR)
                                     {% endif %}  ;;
-                          #     expression: add_years(${date_date}, 1) ;;
                         }
 
                         dimension: date_last_year {
@@ -1736,7 +1669,6 @@ view: date_base {
                                       {% else %}
                                       DATE_ADD(${date_date}), INTERVAL -1 YEAR)
                                       {% endif %}  ;;
-                            #     expression: add_years(${date_date}, -1) ;;
                           }
 
                           dimension: date_days_prior {
@@ -1747,35 +1679,30 @@ view: date_base {
                                       {% else %}
                                         DATE_DIFF(${date_date}, CURRENT_DATE(), DAY)
                                       {% endif %}  ;;
-                              #     expression: diff_days(${date_date}, now()) ;;
                             }
 
                             dimension: date_day_of_7_days_prior {
                               hidden: yes
                               type: number
                               sql: MOD(MOD(${date_days_prior}, 7) + 7, 7) ;;
-#     expression: mod(mod(${date_days_prior}, 7) + 7, 7) ;;
                             }
 
                             dimension: date_day_of_28_days_prior {
                               hidden: yes
                               type: number
                               sql: MOD(MOD(${date_days_prior}, 28) + 28, 28) ;;
-#     expression: mod(mod(${date_days_prior}, 28) + 28, 28) ;;
                             }
 
                             dimension: date_day_of_91_days_prior {
                               hidden: yes
                               type: number
                               sql: MOD(MOD(${date_days_prior}, 91) + 91, 91) ;;
-#     expression: mod(mod(${date_days_prior}, 91) + 91, 91) ;;
                             }
 
                             dimension: date_day_of_364_days_prior {
                               hidden: yes
                               type: number
                               sql: MOD(MOD(${date_days_prior}, 364) + 364, 364) ;;
-#     expression: mod(mod(${date_days_prior}, 364) + 364, 364) ;;
                             }
 
                             dimension: date_date_7_days_prior {
@@ -1787,7 +1714,6 @@ view: date_base {
                                         {% else %}
                                           DATE_ADD(${date_date}, INTERVAL -${date_day_of_7_days_prior} DAY)
                                         {% endif %} ;;
-                                #     expression: add_days(-1 * ${date_day_of_7_days_prior}, ${date_date}) ;;
                               }
 
                               dimension: date_date_28_days_prior {
@@ -1799,7 +1725,6 @@ view: date_base {
                                           {% else %}
                                             DATE_ADD(${date_date}, INTERVAL -${date_day_of_28_days_prior} DAY)
                                           {% endif %} ;;
-                                  #     expression: add_days(-1 * ${date_day_of_28_days_prior}, ${date_date}) ;;
                                 }
 
                                 dimension: date_date_91_days_prior {
@@ -1811,7 +1736,6 @@ view: date_base {
                                             {% else %}
                                               DATE_ADD(${date_date}, INTERVAL -${date_day_of_91_days_prior} DAY)
                                             {% endif %} ;;
-                                    #     expression: add_days(-1 * ${date_day_of_91_days_prior}, ${date_date}) ;;
                                   }
 
                                   dimension: date_date_364_days_prior {
@@ -1823,7 +1747,6 @@ view: date_base {
                                               {% else %}
                                                 DATE_ADD(${date_date}, INTERVAL -${date_day_of_364_days_prior} DAY)
                                               {% endif %} ;;
-                                      #     expression: add_days(-1 * ${date_day_of_364_days_prior}, ${date_date}) ;;
                                     }
 
                                   }
@@ -2129,85 +2052,6 @@ view: period_base {
               allow_fill: no
             }
           }
-view: ad_metrics_weighted_period_comparison_base {
-  extension: required
-
-  measure: weighted_total_impressions {
-    hidden: yes
-    type:  sum
-    sql:  ${impressions} / NULLIF(${total.impressions}, 0) ;;
-  }
-  measure: weighted_average_click_rate_period_percent_change {
-    hidden: yes
-    type: number
-    sql: ${average_click_rate_period_percent_change} * ${weighted_total_impressions} ;;
-    group_label: "Period Comparisons"
-    value_format_name: percent_1
-  }
-  measure: average_click_rate_period_percent_change_abs {
-    sql: abs(${weighted_average_click_rate_period_percent_change}) ;;
-  }
-  measure: weighted_total_clicks {
-    hidden: yes
-    type:  sum
-    sql:  ${clicks} / NULLIF(${total.clicks}, 0) ;;
-  }
-  measure: weighted_average_conversion_rate_period_percent_change {
-    hidden: yes
-    type: number
-    sql: ${average_conversion_rate_period_percent_change} * ${weighted_total_clicks} ;;
-    group_label: "Period Comparisons"
-    value_format_name: percent_1
-  }
-  measure: average_conversion_rate_period_percent_change_abs {
-    sql: abs(${weighted_average_conversion_rate_period_percent_change}) ;;
-  }
-  measure: weighted_average_cost_per_click_period_percent_change {
-    hidden: yes
-    type: number
-    sql: ${average_cost_per_click_period_percent_change} * ${weighted_total_clicks} ;;
-    group_label: "Period Comparisons"
-    value_format_name: percent_1
-  }
-  measure: average_cost_per_click_period_percent_change_abs {
-    sql: abs(${weighted_average_cost_per_click_period_percent_change}) ;;
-  }
-  measure: weighted_total_cost {
-    hidden: yes
-    type:  sum
-    sql:  ${cost} / NULLIF(${total.cost}, 0) ;;
-  }
-  measure: weighted_average_value_per_cost_period_percent_change {
-    hidden: yes
-    type: number
-    sql: ${average_value_per_cost_period_percent_change} * ${weighted_total_cost} ;;
-    group_label: "Period Comparisons"
-    value_format_name: percent_1
-  }
-  measure: average_value_per_cost_percent_change_abs {
-    sql: abs(${weighted_average_value_per_cost_period_percent_change}) ;;
-  }
-  measure: weighted_total_conversions {
-    hidden: yes
-    type:  sum
-    sql:  ${conversions} / NULLIF(${total.conversions}, 0) ;;
-  }
-  measure: weighted_average_cost_per_conversion_period_percent_change {
-    hidden: yes
-    type: number
-    sql: ${average_cost_per_conversion_period_percent_change} * ${weighted_total_conversions} ;;
-    group_label: "Period Comparisons"
-    value_format_name: percent_1
-  }
-  measure: average_cost_per_conversion_period_percent_change_abs {
-    sql: abs(${weighted_average_cost_per_conversion_period_percent_change}) ;;
-  }
-  measure: weighted_total_conversionvalue {
-    hidden: yes
-    type:  sum
-    sql:  ${conversionvalue} / NULLIF(${total.conversionvalue},0) ;;
-  }
-}
 view: ad_metrics_period_comparison_base {
   extension: required
 
@@ -2636,680 +2480,6 @@ view: ad_metrics_period_comparison_base {
     group_label: "Period Comparisons"
   }
 }
-view: ad_metrics_parent_comparison_base {
-  extension: required
-
-  dimension: cost_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.cost} - ${fact.cost} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: total_cost_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.total_cost} - ${fact.total_cost} ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: impressions_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.impressions} - ${fact.impressions} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: total_impressions_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.total_impressions} - ${fact.total_impressions} ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: clicks_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.clicks} - ${fact.clicks} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: total_clicks_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.total_clicks} - ${fact.total_clicks} ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: conversions_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.conversions} - ${fact.conversions} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: total_conversions_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.total_conversions} - ${fact.total_conversions} ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: conversionvalue_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.conversionvalue} - ${fact.conversionvalue} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: total_conversionvalue_delta {
-    hidden: yes
-    type: number
-    sql: ${parent_fact.total_conversionvalue} - ${fact.total_conversionvalue};;
-    group_label: "Parent Comparisons"
-  }
-  dimension: click_rate_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.click_rate} / NULLIF(${parent_fact.click_rate},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_click_rate_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_click_rate} / NULLIF(${parent_fact.average_click_rate},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: conversion_rate_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.conversion_rate} / NULLIF(${parent_fact.conversion_rate},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_conversion_rate_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_conversion_rate} / NULLIF(${parent_fact.average_conversion_rate},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: cost_per_conversion_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_delta}*1.0 / NULLIF(${fact.conversions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  measure: average_cost_per_conversion_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_cost_delta}*1.0 / NULLIF(${fact.total_conversions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  dimension: value_per_cost_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.conversionvalue_delta}*1.0 / NULLIF(${fact.cost_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_1
-  }
-  measure: average_value_per_cost_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_conversionvalue_delta}*1.0 / NULLIF(${fact.total_cost_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  dimension: cost_per_click_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_delta}*1.0 / NULLIF(${fact.clicks_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  measure: average_cost_per_click_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_cost_delta}*1.0 / NULLIF(${fact.total_clicks_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, average_cost_per_click]
-  }
-  dimension: cost_per_impression_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_delta}*1.0 / NULLIF(${fact.impressions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  dimension: value_per_cost_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.value_per_cost} / NULLIF(${fact.value_per_cost_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_value_per_cost_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_value_per_cost} / NULLIF(${fact.average_value_per_cost_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_cost_per_impression_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_cost_delta}*1.0 / NULLIF(${fact.total_impressions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: usd
-  }
-  dimension: cost_per_conversion_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_per_conversion} / NULLIF(${fact.cost_per_conversion_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_cost_per_conversion_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_cost_per_conversion} / NULLIF(${fact.average_cost_per_conversion_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: cost_per_click_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_per_click} / NULLIF(${fact.cost_per_click_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_cost_per_click_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_cost_per_click} / NULLIF(${fact.average_cost_per_click_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: cost_per_impression_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.cost_per_impression} / NULLIF(${cost_per_impression_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_cost_per_impression_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_cost_per_impression} / NULLIF(${average_cost_per_impression_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: click_rate_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.clicks_delta}*1.0/NULLIF(${fact.impressions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: percent_2
-  }
-  measure: average_click_rate_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_clicks_delta}*1.0/NULLIF(${fact.total_impressions_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: percent_2
-  }
-  dimension: conversion_rate_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.conversions_delta}*1.0/NULLIF(${fact.clicks_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: percent_2
-  }
-  measure: average_conversion_rate_delta {
-    hidden: yes
-    type: number
-    sql: ${fact.total_conversions_delta}*1.0/NULLIF(${fact.total_clicks_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: percent_2
-  }
-  dimension: click_rate_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.click_rate} / NULLIF(${click_rate_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  measure: average_click_rate_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_click_rate} / NULLIF(${average_click_rate_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: conversion_rate_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.conversion_rate} / NULLIF(${conversion_rate_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-  dimension: click_rate_or_cost_per_conversion_or_conversion_rate_bad {
-    hidden: yes
-    type: yesno
-    sql: ${conversion_rate_bad} = true OR ${click_rate_bad} = true OR ${cost_per_conversion_bad} = true;;
-    group_label: "Parent Comparisons"
-  }
-
-  measure: click_rate_or_cost_per_conversion_or_conversion_rate_count_bad {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: click_rate_or_cost_per_conversion_or_conversion_rate_bad
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  measure: average_conversion_rate_delta_ratio {
-    hidden: yes
-    type: number
-    sql: ${fact.average_conversion_rate} / NULLIF(${average_conversion_rate_delta},0) ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-
-  dimension: click_rate_z_score {
-    hidden: no
-    type: number
-    #sql:
-    #(
-    #  (${fact.click_rate}) -
-    #  (${fact.click_rate_delta})
-    #) /
-    #NULLIF(SQRT(
-    #  ${parent_fact.click_rate}  *
-    #  (1 - IF(${parent_fact.click_rate}>1, NULL, ${parent_fact.click_rate})) *
-    #  ((1 / IF(${fact.impressions}<=0, NULL, ${fact.impressions})) + (1 / IF(${fact.impressions_delta}<=0, NULL, ${fact.impressions_delta})))
-    #),0) ;;
-    expression:
-      (
-        (${fact.click_rate}) -
-        (${fact.click_rate_delta})
-      ) /
-      if(
-        sqrt(${parent_fact.click_rate} *
-          (1 - if(${parent_fact.click_rate} > 1, null, ${parent_fact.click_rate})) *
-          (
-            (1 / if(${fact.impressions} <= 0, null, ${fact.impressions})) +
-            (1 / if(${fact.impressions_delta} <= 0, null, ${fact.impressions_delta}))
-          )
-        )
-        = 0,
-        null,
-        sqrt(${parent_fact.click_rate} *
-          (1 - if(${parent_fact.click_rate} > 1, null, ${parent_fact.click_rate})) *
-          (
-            (1 / if(${fact.impressions} <= 0, null, ${fact.impressions})) +
-            (1 / if(${fact.impressions_delta} <= 0, null, ${fact.impressions_delta}))
-          )
-        )
-      )
-    ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-
-  measure: average_click_rate_z_score {
-    hidden: no
-    type: number
-    sql:
-      {% if _dialect._name == 'redshift' %}
-        (
-         (${fact.average_click_rate}) -
-         (${fact.average_click_rate_delta})
-        ) /
-        NULLIF(SQRT(
-          ${parent_fact.average_click_rate} *
-          (
-            1 -
-                (CASE WHEN (${parent_fact.average_click_rate}) > 1
-                THEN NULL
-                ELSE ${parent_fact.average_click_rate} END)
-          ) *
-          (
-            (1 /
-              (CASE WHEN ${fact.total_impressions} <= 0
-              THEN NULL
-              ELSE ${fact.total_impressions} END)
-            ) +
-            (1 /
-              (CASE WHEN ${fact.total_impressions_delta} <= 0
-              THEN NULL
-              ELSE ${fact.total_impressions_delta} END)
-            )
-          )
-        ),0)
-      {% else %}
-        (
-         (${fact.average_click_rate}) -
-         (${fact.average_click_rate_delta})
-        ) /
-        NULLIF(SQRT(
-          ${parent_fact.average_click_rate} *
-          (
-            1 -
-                IF(${parent_fact.average_click_rate} > 1,
-                NULL,
-                ${parent_fact.average_click_rate})
-          ) *
-          (
-            (1 /
-              IF(${fact.total_impressions} <= 0,
-              NULL,
-              ${fact.total_impressions})
-            ) +
-            (1 /
-              IF(${fact.total_impressions_delta} <= 0,
-              NULL,
-             ${fact.total_impressions_delta})
-            )
-          )
-        ),0)
-      {% endif %}
-    ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-
-  dimension: click_rate_significant {
-    hidden: yes
-    type: yesno
-    sql:  (${fact.click_rate_z_score} > 1.96) OR
-      (${fact.click_rate_z_score} < -1.96) ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: average_click_rate_significant {
-    hidden: yes
-    type: yesno
-    sql:  (${fact.average_click_rate_z_score} > 1.96) OR
-      (${fact.average_click_rate_z_score} < -1.96) ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: click_rate_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.click_rate} > ${parent_fact.click_rate} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: average_click_rate_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.average_click_rate} > ${parent_fact.average_click_rate} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: conversion_rate_z_score {
-    hidden: no
-    type: number
-    # sql:
-    # (
-    #   (${fact.conversion_rate}) -
-    #   (${fact.conversion_rate_delta})
-    # ) /
-    # NULLIF(SQRT(
-    #   ${parent_fact.conversion_rate} *
-    #    (1 - IF(${parent_fact.conversion_rate} > 1, NULL, ${parent_fact.conversion_rate})) *
-    #   ((1 / IF(${fact.clicks} <=0, NULL, ${fact.clicks})) + (1 / IF(${fact.clicks_delta}<=0, NULL, ${fact.clicks_delta})))
-    # ),0) ;;
-    expression:
-      (
-        (${fact.conversion_rate}) -
-        (${fact.conversion_rate_delta})
-      ) /
-      if(
-        sqrt(${parent_fact.conversion_rate} *
-          (1 - if(${parent_fact.conversion_rate} > 1, null, ${parent_fact.conversion_rate})) *
-          (
-            (1 / if(${fact.clicks} <= 0, null, ${fact.clicks})) +
-            (1 / if(${fact.clicks_delta} <= 0, null, ${fact.clicks_delta}))
-          )
-        )
-        = 0,
-        null,
-        sqrt(${parent_fact.conversion_rate} *
-          (1 - if(${parent_fact.conversion_rate} > 1, null, ${parent_fact.conversion_rate})) *
-          (
-            (1 / if(${fact.clicks} <= 0, null, ${fact.clicks})) +
-            (1 / if(${fact.clicks_delta} <= 0, null, ${fact.clicks_delta}))
-          )
-        )
-      )
-    ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-
-  measure: average_conversion_rate_z_score {
-    hidden: no
-    type: number
-    sql:
-      {% if _dialect._name == 'redshift' %}
-        (
-         (${fact.average_conversion_rate}) -
-         (${fact.average_conversion_rate_delta})
-        ) /
-        NULLIF(SQRT(
-          ${parent_fact.average_conversion_rate} *
-          (
-            1 -
-              (CASE WHEN (${parent_fact.average_conversion_rate} > 1)
-              THEN NULL
-              ELSE ${parent_fact.average_conversion_rate} END)
-          ) *
-          (
-            (1 /
-              (CASE WHEN (${fact.total_clicks} <= 0)
-              THEN NULL
-              ELSE ${fact.total_clicks} END)
-            ) +
-            (1 /
-              (CASE WHEN (${fact.total_clicks_delta} <= 0)
-              THEN NULL
-              ELSE ${fact.total_clicks_delta} END)
-            )
-          )
-        ),0)
-      {% else %}
-        (
-         (${fact.average_conversion_rate}) -
-         (${fact.average_conversion_rate_delta})
-        ) /
-        NULLIF(SQRT(
-          ${parent_fact.average_conversion_rate} *
-          (
-            1 -
-              IF(${parent_fact.average_conversion_rate} > 1,
-              NULL,
-              ${parent_fact.average_conversion_rate})
-          ) *
-          (
-            (1 /
-              IF(${fact.total_clicks} <= 0,
-              NULL,
-              ${fact.total_clicks})
-            ) +
-            (1 /
-              IF (${fact.total_clicks_delta} <= 0,
-              NULL,
-              ${fact.total_clicks_delta})
-            )
-          )
-        ),0)
-      {% endif %}
-    ;;
-    group_label: "Parent Comparisons"
-    value_format_name: decimal_2
-  }
-
-  dimension: conversion_rate_significant {
-    hidden: yes
-    type: yesno
-    sql:  (${fact.conversion_rate_z_score} > 1.96) OR
-      (${fact.conversion_rate_z_score} < -1.96) ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: average_conversion_rate_significant {
-    hidden: yes
-    type: yesno
-    sql:  (${fact.average_conversion_rate_z_score} > 1.96) OR
-      (${fact.average_conversion_rate_z_score} < -1.96) ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: conversion_rate_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.conversion_rate} > ${parent_fact.conversion_rate} ;;
-    group_label: "Parent Comparisons"
-  }
-  measure: average_conversion_rate_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.average_conversion_rate} > ${parent_fact.average_conversion_rate} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: cost_per_conversion_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.cost_per_conversion} < ${parent_fact.cost_per_conversion} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: cost_per_conversion_good {
-    hidden: yes
-    type: yesno
-    sql: ${cost_per_conversion_better} AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: value_per_cost_better {
-    hidden: yes
-    type: yesno
-    sql:  ${fact.value_per_cost} < ${parent_fact.value_per_cost} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: value_per_cost_good {
-    hidden: yes
-    type: yesno
-    sql: ${value_per_cost_better} AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: conversion_rate_good {
-    hidden: yes
-    type: yesno
-    sql: ${conversion_rate_better} AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: click_rate_good {
-    hidden: yes
-    type: yesno
-    sql: ${click_rate_better} AND ${click_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  measure: cost_per_conversion_count_good {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: cost_per_conversion_good
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  measure: conversion_rate_count_good {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: conversion_rate_good
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  measure: click_rate_count_good {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: click_rate_good
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: cost_per_conversion_bad {
-    hidden: yes
-    type: yesno
-    sql: (NOT ${cost_per_conversion_better} OR ${conversions} = 0) AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: conversion_rate_bad {
-    hidden: yes
-    type: yesno
-    sql: NOT ${conversion_rate_better} AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  dimension: click_rate_bad {
-    hidden: yes
-    type: yesno
-    sql: NOT ${click_rate_better} AND ${click_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-  dimension: value_per_cost_bad {
-    hidden: yes
-    type: yesno
-    sql: NOT ${value_per_cost_better} AND ${conversion_rate_significant} ;;
-    group_label: "Parent Comparisons"
-  }
-
-  measure: cost_per_conversion_count_bad {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: cost_per_conversion_bad
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  measure: conversion_rate_count_bad {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: conversion_rate_bad
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-
-  measure: click_rate_count_bad {
-    hidden: yes
-    type: count_distinct
-    sql: ${key_base} ;;
-    filters: {
-      field: click_rate_bad
-      value: "Yes"
-    }
-    group_label: "Parent Comparisons"
-  }
-}
 view: ad_metrics_dimension_base {
   extension: required
 
@@ -3423,183 +2593,4 @@ view: ad_metrics_dimension_base {
     sql: ${conversions}*1.0 / NULLIF(${clicks},0) ;;
     value_format_name: percent_2
   }
-}
-
-view: ad_metrics_base_template {
-  extension: required
-  extends: [ad_metrics_dimension_base]
-
-  measure: average_click_rate {
-    label: "Click Through Rate"
-    description: "Percent of people that click on an ad."
-    type: number
-    sql: ${total_clicks}*1.0/nullif(${total_impressions},0) ;;
-    value_format_name: percent_2
-    drill_fields: [fact.date_date, campaign.name, average_click_rate]
-  }
-
-  measure: average_cost_per_conversion {
-    label: "Cost per Conversion"
-    description: "Cost per conversion."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_conversions},0) ;;
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, fact.total_conversions, fact.total_cost, fact.average_cost_per_conversion]
-  }
-
-  measure: average_cost_per_value {
-    label: "Cost per value"
-    description: "Cost per value."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_conversionvalue},0) ;;
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, fact.total_conversionvalue, fact.total_cost, fact.average_cost_per_conversion]
-  }
-
-  measure: average_value_per_conversion {
-    label: "Value per Conversion"
-    description: "Average value per conversion."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_conversions},0) ;;
-    value_format_name: usd
-  }
-
-  measure: average_cost_per_click {
-    label: "Cost per Click"
-    description: "Average cost per ad click."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: usd
-    drill_fields: [fact.date_date, campaign.name, average_cost_per_click]
-  }
-
-  measure: average_value_per_click {
-    label: "Value per Click"
-    description: "Average value per ad click."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: usd
-  }
-
-  measure: average_cost_per_impression {
-    label: "CPM"
-    description: "Average cost per ad impression viewed."
-    type: number
-    sql: ${total_cost}*1.0 / NULLIF(${total_impressions},0) * 1000.0 ;;
-    value_format_name: usd
-  }
-
-  measure: average_value_per_impression {
-    label: "Value per Impression"
-    description: "Average value per ad impression viewed."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_impressions},0) ;;
-    value_format_name: usd
-  }
-
-  measure: average_value_per_cost {
-    label: "ROAS"
-    description: "Average Return on Ad Spend."
-    type: number
-    sql: ${total_conversionvalue}*1.0 / NULLIF(${total_cost},0) ;;
-    value_format_name: percent_0
-  }
-
-  measure: average_conversion_rate {
-    label: "Conversion Rate"
-    description: "Percent of people that convert after they interact with an ad."
-    type: number
-    sql: ${total_conversions}*1.0 / NULLIF(${total_clicks},0) ;;
-    value_format_name: percent_2
-    drill_fields: [fact.date_date, campaign.name, average_conversion_rate]
-  }
-
-  measure: cumulative_spend {
-    type: running_total
-    sql: ${total_cost} ;;
-    drill_fields: [fact.date_date, campaign.name, fact.total_cost]
-    value_format_name: usd_0
-    direction: "column"
-  }
-
-  measure: cumulative_conversions {
-    type: running_total
-    sql: ${total_conversions} ;;
-    drill_fields: [fact.date_date, campaign.name, fact.total_conversions]
-    value_format_name: decimal_0
-    direction: "column"
-  }
-
-  measure: total_clicks {
-    label: "Clicks"
-    description: "Total ad clicks."
-    type: sum
-    sql: ${clicks} ;;
-    value_format_name: decimal_0
-    drill_fields: [fact.date_date, campaign.name, total_clicks]
-  }
-
-  measure: total_conversions {
-    label: "Conversions"
-    description: "Total conversions."
-    type: sum
-    sql: ${conversions} ;;
-    value_format_name: decimal_0
-    drill_fields: [fact.date_date, campaign.name, total_conversions]
-  }
-
-  measure: total_conversionvalue {
-    label: "Conv. Value"
-    description: "Total conversion value."
-    type: sum
-    sql: ${conversionvalue} ;;
-    value_format_name: usd_0
-  }
-
-  measure: total_cost {
-    label: "Cost"
-    description: "Total cost."
-    type: sum
-    sql: ${cost} ;;
-    value_format_name: usd_0
-    drill_fields: [fact.date_date, campaign.name, total_cost]
-  }
-
-  measure: total_impressions {
-    label: "Impressions"
-    description: "Total ad impressions."
-    type:  sum
-    sql:  ${impressions} ;;
-    drill_fields: [external_customer_id, total_impressions]
-    value_format_name: decimal_0
-  }
-
-  set: ad_metrics_set {
-    fields: [
-      cost,
-      impressions,
-      clicks,
-      conversions,
-      conversionvalue,
-      click_rate,
-      conversion_rate,
-      cost_per_impression,
-      cost_per_click,
-      cost_per_conversion,
-      total_cost,
-      total_impressions,
-      total_clicks,
-      total_conversions,
-      total_conversionvalue,
-      average_click_rate,
-      average_conversion_rate,
-      average_cost_per_impression,
-      average_cost_per_click,
-      average_cost_per_conversion,
-      cumulative_conversions,
-      cumulative_spend,
-      average_value_per_cost
-    ]
-  }
-
 }

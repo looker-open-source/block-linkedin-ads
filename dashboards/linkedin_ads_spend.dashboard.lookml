@@ -1,6 +1,5 @@
 - dashboard: linkedin_ads_spend
   title: Linkedin Ads - Spend
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"

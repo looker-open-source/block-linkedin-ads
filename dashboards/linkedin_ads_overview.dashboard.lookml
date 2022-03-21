@@ -1,5 +1,4 @@
 - dashboard: linkedin_ads_overview
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"
