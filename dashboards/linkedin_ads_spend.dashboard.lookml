@@ -1,6 +1,5 @@
 - dashboard: linkedin_ads_spend
   title: Linkedin Ads - Spend
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"
@@ -249,7 +248,7 @@
     fields: [last_fact.total_cost, fact.total_cost, fact.total_cost_period_delta,
       fact.ad_title, fact.campaign_name]
     filters:
-      fact.total_cost_period_delta_abs: ">0"
+      fact.total_cost_period_delta: ">0"
     sorts: [fact.total_cost_period_delta desc]
     limit: 50
     column_limit: 50

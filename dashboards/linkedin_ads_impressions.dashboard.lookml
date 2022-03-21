@@ -1,6 +1,5 @@
 - dashboard: linkedin_ads_impressions
   title: LinkedIn Ads - Impressions
-
   layout: newspaper
   embed_style:
     background_color: "#ffffff"
@@ -219,7 +218,7 @@
     fields: [last_fact.total_impressions_period_delta, last_fact.total_impressions,
       fact.total_impressions, last_fact.ad_title, last_fact.campaign_name]
     filters:
-      fact.total_conversions_period_delta_abs: ">0"
+      fact.total_conversions_period_delta: ">0"
     sorts: [last_fact.total_impressions_period_delta desc]
     limit: 50
     column_limit: 50
